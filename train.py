@@ -28,7 +28,7 @@ def load_model(model_name: str, device_map: str):
     model=AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto",
+        device_map=device_map,
     )
     tokenizer=AutoTokenizer.from_pretrained(model_name)
     if tokenizer.pad_token is None:
@@ -78,6 +78,7 @@ def rollout(
         temperature=temperature,
         max_length=max_length,
         pad_token_id=pad_token_id,
+        use_cache=False,
     )
     # seq_ids
     seq_ids = model.generate(**model_inputs, generation_config=generation_config)
@@ -132,13 +133,13 @@ def main():
     ref_model_name = "meta-llama/Llama-3.2-1B-Instruct"
     device_map = "auto"
     seed = 42
-    batch_size = 16
-    max_length = 1024
+    batch_size = 4
+    max_length = 512
     checkpoint_path = Path("./output")
     checkpoint_path.mkdir(parents=True, exist_ok=True)
     checkpoint_interval = 20
-    num_step_epochs=2
-    num_rollout=8
+    num_step_epochs=1
+    num_rollout=4
     temperature=0.6
     top_p=1.0
     prompts_path="math_tasks.jsonl"
@@ -149,7 +150,7 @@ def main():
     random.seed(seed)
     torch.manual_seed(seed)
 
-    ref_model, _ = load_model(ref_model_name, device_map="auto")
+    ref_model, _ = load_model(ref_model_name, device_map="cpu")
     model, tokenizer = load_model(model_name, device_map="auto")
     ref_model.eval()
     model.gradient_checkpointing_enable(
