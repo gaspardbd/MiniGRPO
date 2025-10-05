@@ -141,7 +141,7 @@ def main():
     prompts_path="math_tasks.jsonl"
 
 
-    device = torch.device("cuda", device_index=0)
+    device = torch.device("cuda:0")
     cpu_device = torch.device("cpu")
     random.seed(seed)
     torch.manual_seed(seed)
