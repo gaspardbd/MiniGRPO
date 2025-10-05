@@ -135,6 +135,7 @@ def main():
     batch_size = 16
     max_length = 1024
     checkpoint_path = Path("./output")
+    checkpoint_path.mkdir(parents=True, exist_ok=True)
     checkpoint_interval = 20
     num_step_epochs=2
     num_rollout=8
@@ -248,6 +249,7 @@ def main():
                     optimizer.zero_grad()
                     loss_value.backward()
                     optimizer.step()
+                    print(f"step={k}, epoch={epoch}, loss={loss_value.item():.4f}")
                     # torch.cuda.empty_cache()
             if (
                 checkpoint_path is not None
