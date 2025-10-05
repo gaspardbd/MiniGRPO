@@ -189,8 +189,16 @@ def main():
                 attention_mask = seq_ids != pad_token_id
                 position_ids = attention_mask.long().cumsum(dim=-1) - 1
                 position_ids = position_ids.masked_fill(~attention_mask.bool(), 1) # RoPE in LLaMa doesnt support negative position ids
-                outputs=model.forward(input_ids=seq_ids, attention_mask=attention_mask, position_ids=position_ids)
-                outputs_ref=ref_model.forward(input_ids=seq_ids, attention_mask=attention_mask, position_ids=position_ids)
+                outputs = model.forward(input_ids=seq_ids, attention_mask=attention_mask, position_ids=position_ids)
+                # Run reference model on CPU tensors to avoid GPU OOM and device mismatch
+                seq_ids_cpu = seq_ids.to("cpu")
+                attention_mask_cpu = attention_mask.to("cpu")
+                position_ids_cpu = position_ids.to("cpu")
+                outputs_ref = ref_model.forward(
+                    input_ids=seq_ids_cpu,
+                    attention_mask=attention_mask_cpu,
+                    position_ids=position_ids_cpu,
+                )
 
                 logits=outputs["logits"]
                 logits_ref=outputs_ref["logits"]
@@ -198,8 +206,11 @@ def main():
                 log_probs=F.log_softmax(logits, dim=-1)
                 log_probs=log_probs.gather(dim=-1, index=seq_ids[:, 1:].unsqueeze(-1)).squeeze(dim=-1)
 
-                log_probs_ref=F.log_softmax(logits_ref, dim=-1)
-                log_probs_ref=log_probs_ref.gather(dim=-1, index=seq_ids[:, 1:].unsqueeze(-1)).squeeze(dim=-1)
+                log_probs_ref_cpu = F.log_softmax(logits_ref[:, :-1], dim=-1)
+                log_probs_ref_cpu = log_probs_ref_cpu.gather(
+                    dim=-1, index=seq_ids_cpu[:, 1:].unsqueeze(-1)
+                ).squeeze(dim=-1)
+                log_probs_ref = log_probs_ref_cpu.to(seq_ids.device)
 
                 advantages = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
                 advantages = advantages.unsqueeze(-1)  # [B, 1] for broadcasting over time
