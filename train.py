@@ -165,10 +165,8 @@ def main():
     for k, prompt_batch in enumerate(dataloader):
         replay_buffer.clear()
         
-        question_batch=prompt_batch["question"]
-        question_batch=question_batch.to(device)
-        answer_batch=prompt_batch["answer"]
-        answer_batch=answer_batch.to(device)
+        question_batch = prompt_batch["question"]
+        answer_batch = prompt_batch["answer"]
 
         with torch.no_grad():
             for q, a in zip(question_batch, answer_batch):
