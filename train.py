@@ -31,6 +31,8 @@ def load_model(model_name: str, device_map: str):
         device_map="auto",
     )
     tokenizer=AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     return model, tokenizer
 
 def rollout(
