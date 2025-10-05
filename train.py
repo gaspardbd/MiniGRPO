@@ -221,36 +221,38 @@ def main():
                 replay_buffer.append(experience.to(cpu_device))
             torch.cuda.empty_cache()
 
-            experience_sampler = DataLoader(
-                replay_buffer,
-                batch_size=batch_size,
-                shuffle=True,
-                drop_last=True,
-                collate_fn=join_experience_batch,
-            )
+            with torch.enable_grad():
+                experience_sampler = DataLoader(
+                    replay_buffer,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    drop_last=True,
+                    collate_fn=join_experience_batch,
+                )
 
-            for epoch in range(num_step_epochs):
-                for experience in experience_sampler:
-                    experience = experience.to(device)
-                    attention_mask = experience.attention_mask
-                    position_ids = attention_mask.long().cumsum(dim=-1) - 1
-                    position_ids = position_ids.masked_fill(~attention_mask.bool(), 1)
-                    outputs = model.forward(
-                        input_ids=experience.sequences,
-                        attention_mask=attention_mask,
-                        position_ids=position_ids,
-                    )
-                    log_probs = F.log_softmax(outputs["logits"][:, :-1], dim=-1)
-                    log_probs = log_probs.gather(
-                        dim=-1, index=experience.sequences[:, 1:].unsqueeze(-1)
-                    ).squeeze(dim=-1)
+                model.train()
+                for epoch in range(num_step_epochs):
+                    for experience in experience_sampler:
+                        experience = experience.to(device)
+                        attention_mask = experience.attention_mask
+                        position_ids = attention_mask.long().cumsum(dim=-1) - 1
+                        position_ids = position_ids.masked_fill(~attention_mask.bool(), 1)
+                        outputs = model.forward(
+                            input_ids=experience.sequences,
+                            attention_mask=attention_mask,
+                            position_ids=position_ids,
+                        )
+                        log_probs = F.log_softmax(outputs["logits"][:, :-1], dim=-1)
+                        log_probs = log_probs.gather(
+                            dim=-1, index=experience.sequences[:, 1:].unsqueeze(-1)
+                        ).squeeze(dim=-1)
 
-                    loss_value = loss_fn(log_probs, experience)
-                    optimizer.zero_grad()
-                    loss_value.backward()
-                    optimizer.step()
-                    print(f"step={k}, epoch={epoch}, loss={loss_value.item():.4f}")
-                    # torch.cuda.empty_cache()
+                        loss_value = loss_fn(log_probs, experience)
+                        optimizer.zero_grad()
+                        loss_value.backward()
+                        optimizer.step()
+                        print(f"step={k}, epoch={epoch}, loss={loss_value.item():.4f}")
+                        # torch.cuda.empty_cache()
             if (
                 checkpoint_path is not None
                 and checkpoint_interval is not None
