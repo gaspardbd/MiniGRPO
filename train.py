@@ -76,6 +76,7 @@ def rollout(
         do_sample=True,
         top_p=top_p,
         temperature=temperature,
+        repetition_penalty=1.05,
         max_length=max_length,
         pad_token_id=pad_token_id,
         use_cache=False,
@@ -129,8 +130,8 @@ The assistant first thinks about the reasoning process in the mind and then prov
 
 def main():
     # parameters
-    model_name = "meta-llama/Llama-3.2-1B-Instruct"
-    ref_model_name = "meta-llama/Llama-3.2-1B-Instruct"
+    model_name = "LiquidAI/LFM2-350M"
+    ref_model_name = "LiquidAI/LFM2-350M"
     device_map = "auto"
     seed = 42
     batch_size = 4
@@ -140,7 +141,7 @@ def main():
     checkpoint_interval = 20
     num_step_epochs=1
     num_rollout=4
-    temperature=0.6
+    temperature=0.3
     top_p=1.0
     prompts_path="math_tasks.jsonl"
 
