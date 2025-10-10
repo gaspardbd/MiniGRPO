@@ -25,12 +25,23 @@ from grpo_loss import GRPO_Loss
 from replay_buffer import ReplayBuffer, Experience, join_experience_batch
 
 def load_model(model_name: str, device_map: str):
+    if torch.cuda.is_available():
+        try:
+            supports_bf16 = torch.cuda.is_bf16_supported()
+        except Exception:
+            supports_bf16 = False
+        dtype = torch.bfloat16 if supports_bf16 else torch.float16
+    else:
+        dtype = torch.float32
+    print(f"Loading {model_name} (dtype={dtype}, device_map={device_map})...", flush=True)
     model=AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=dtype,
         device_map=device_map,
+        low_cpu_mem_usage=True,
     )
     tokenizer=AutoTokenizer.from_pretrained(model_name)
+    print(f"Loaded {model_name}", flush=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return model, tokenizer
@@ -154,6 +165,7 @@ def main():
     ref_model, _ = load_model(ref_model_name, device_map="cpu")
     model, tokenizer = load_model(model_name, device_map="auto")
     ref_model.eval()
+    print(f"Loaded models. Policy device={model.device}, Ref device={ref_model.device}", flush=True)
     model.gradient_checkpointing_enable(
         gradient_checkpointing_kwargs={"use_reentrant": False}
     )
@@ -163,18 +175,21 @@ def main():
 
     prompts = read_prompts(prompts_path)
     dataloader = DataLoader(prompts, batch_size=batch_size, shuffle=True)
+    print(f"Loaded {len(prompts)} prompts. Batch size={batch_size}, num_rollout={num_rollout}", flush=True)
 
     loss_fn = GRPO_Loss(clip_epsilon=0.2, kl_weight=0.01)
     replay_buffer = ReplayBuffer()
 
     for k, prompt_batch in enumerate(dataloader):
         replay_buffer.clear()
+        print(f"Step {k}: starting rollouts", flush=True)
         
         question_batch = prompt_batch["question"]
         answer_batch = prompt_batch["answer"]
 
         with torch.no_grad():
-            for q, a in zip(question_batch, answer_batch):
+            for i, (q, a) in enumerate(zip(question_batch, answer_batch)):
+                print(f"  Sample {i+1}/{len(question_batch)}: generating {num_rollout} rollouts...", flush=True)
                 seq_ids, action_mask, rewards, completions = rollout(
                     model,
                     tokenizer,
@@ -186,6 +201,7 @@ def main():
                     temperature=temperature,
                     top_p=top_p,
                 )
+                print(f"  Sample {i+1}: generation done.", flush=True)
 
                 attention_mask = seq_ids != pad_token_id
                 position_ids = attention_mask.long().cumsum(dim=-1) - 1
@@ -233,8 +249,10 @@ def main():
                 )
                 replay_buffer.append(experience.to(cpu_device))
             torch.cuda.empty_cache()
+            print(f"Step {k}: rollouts done. Buffer size={len(replay_buffer)}", flush=True)
 
             with torch.enable_grad():
+                print(f"Step {k}: training...", flush=True)
                 experience_sampler = DataLoader(
                     replay_buffer,
                     batch_size=batch_size,
