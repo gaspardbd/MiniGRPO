@@ -175,17 +175,23 @@ def main():
 
     prompts = read_prompts(prompts_path)
     dataloader = DataLoader(prompts, batch_size=batch_size, shuffle=True)
+    total_steps = len(dataloader)
     print(f"Loaded {len(prompts)} prompts. Batch size={batch_size}, num_rollout={num_rollout}", flush=True)
+    print(f"Total steps to run: {total_steps}", flush=True)
 
     loss_fn = GRPO_Loss(clip_epsilon=0.2, kl_weight=0.01)
     replay_buffer = ReplayBuffer()
 
     for k, prompt_batch in enumerate(dataloader):
         replay_buffer.clear()
-        print(f"Step {k}: starting rollouts", flush=True)
+        progress_pct = ((k + 1) / total_steps) * 100
+        print(f"\n{'='*60}", flush=True)
+        print(f"Step {k+1}/{total_steps} ({progress_pct:.1f}%): starting rollouts", flush=True)
+        print(f"{'='*60}", flush=True)
         
         question_batch = prompt_batch["question"]
         answer_batch = prompt_batch["answer"]
+        all_rewards = []
 
         with torch.no_grad():
             for i, (q, a) in enumerate(zip(question_batch, answer_batch)):
@@ -201,7 +207,8 @@ def main():
                     temperature=temperature,
                     top_p=top_p,
                 )
-                print(f"  Sample {i+1}: generation done.", flush=True)
+                all_rewards.extend(rewards.tolist())
+                print(f"  Sample {i+1}: generation done. Rewards: {rewards.tolist()}", flush=True)
 
                 attention_mask = seq_ids != pad_token_id
                 position_ids = attention_mask.long().cumsum(dim=-1) - 1
@@ -249,10 +256,14 @@ def main():
                 )
                 replay_buffer.append(experience.to(cpu_device))
             torch.cuda.empty_cache()
-            print(f"Step {k}: rollouts done. Buffer size={len(replay_buffer)}", flush=True)
+            mean_reward = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
+            print(f"\n📊 Rollout Summary:", flush=True)
+            print(f"  Buffer size: {len(replay_buffer)}", flush=True)
+            print(f"  Mean reward: {mean_reward:.4f}", flush=True)
+            print(f"  Min/Max reward: {min(all_rewards):.2f}/{max(all_rewards):.2f}", flush=True)
 
             with torch.enable_grad():
-                print(f"Step {k}: training...", flush=True)
+                print(f"\n🔄 Training phase starting...", flush=True)
                 experience_sampler = DataLoader(
                     replay_buffer,
                     batch_size=batch_size,
@@ -262,8 +273,10 @@ def main():
                 )
 
                 model.train()
+                epoch_losses = []
                 for epoch in range(num_step_epochs):
-                    for experience in experience_sampler:
+                    batch_losses = []
+                    for batch_idx, experience in enumerate(experience_sampler):
                         experience = experience.to(device)
                         attention_mask = experience.attention_mask
                         position_ids = attention_mask.long().cumsum(dim=-1) - 1
@@ -282,16 +295,37 @@ def main():
                         optimizer.zero_grad()
                         loss_value.backward()
                         optimizer.step()
-                        print(f"step={k}, epoch={epoch}, loss={loss_value.item():.4f}")
+                        batch_losses.append(loss_value.item())
+                        print(f"  Epoch {epoch+1}/{num_step_epochs}, Batch {batch_idx+1}: loss={loss_value.item():.4f}", flush=True)
                         # torch.cuda.empty_cache()
+                    epoch_mean_loss = sum(batch_losses) / len(batch_losses) if batch_losses else 0.0
+                    epoch_losses.append(epoch_mean_loss)
+                    print(f"  ✓ Epoch {epoch+1} completed. Mean loss: {epoch_mean_loss:.4f}", flush=True)
+                
+                overall_mean_loss = sum(epoch_losses) / len(epoch_losses) if epoch_losses else 0.0
+                print(f"\n✅ Step {k+1}/{total_steps} completed!", flush=True)
+                print(f"  Overall mean loss: {overall_mean_loss:.4f}", flush=True)
+                print(f"  Mean reward: {mean_reward:.4f}", flush=True)
             if (
                 checkpoint_path is not None
                 and checkpoint_interval is not None
                 and (k + 1) % checkpoint_interval == 0
             ):
-                model.save_pretrained(checkpoint_path / f"step_{k}")
-        if checkpoint_path is not None:
-            model.save_pretrained(checkpoint_path / f"step_{k}")
+                checkpoint_dir = checkpoint_path / f"step_{k+1}"
+                print(f"\n💾 Saving checkpoint to {checkpoint_dir}...", flush=True)
+                model.save_pretrained(checkpoint_dir)
+                print(f"✓ Checkpoint saved!", flush=True)
+        
+    # Save final checkpoint
+    if checkpoint_path is not None:
+        final_checkpoint_dir = checkpoint_path / "final"
+        print(f"\n💾 Saving final checkpoint to {final_checkpoint_dir}...", flush=True)
+        model.save_pretrained(final_checkpoint_dir)
+        print(f"✓ Final checkpoint saved!", flush=True)
+    
+    print(f"\n{'='*60}", flush=True)
+    print(f"🎉 Training completed successfully!", flush=True)
+    print(f"{'='*60}", flush=True)
 
 
                 
