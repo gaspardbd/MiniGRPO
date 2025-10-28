@@ -319,7 +319,7 @@ def main():
                 
                 # DEBUG first sample
                 if k == 0 and i == 0:
-                    print(f"\n  🔍 DEBUG - First completion:", flush=True)
+                    print(f"\n  DEBUG - First completion:", flush=True)
                     print(f"  Question: {q[:80]}...", flush=True)
                     print(f"  Expected: {a}", flush=True)
                     print(f"  Generated: {completions[0][:200]}...", flush=True)
@@ -371,13 +371,13 @@ def main():
         torch.cuda.empty_cache()
         
         mean_reward = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
-        print(f"\n📊 Rollout Summary:", flush=True)
+        print(f"\nRollout Summary:", flush=True)
         print(f"  Buffer size: {len(replay_buffer)}", flush=True)
         print(f"  Mean reward: {mean_reward:.4f}", flush=True)
         print(f"  Min/Max: {min(all_rewards):.2f}/{max(all_rewards):.2f}", flush=True)
         
         # ========== TRAINING PHASE ==========
-        print(f"\n🔄 Training phase...", flush=True)
+        print(f"\nTraining phase...", flush=True)
         
         experience_sampler = DataLoader(
             replay_buffer,
@@ -422,21 +422,21 @@ def main():
             epoch_losses.append(epoch_mean_loss)
         
         overall_mean_loss = sum(epoch_losses) / len(epoch_losses) if epoch_losses else 0.0
-        print(f"\n✅ Step {k+1}/{actual_steps} completed!", flush=True)
+        print(f"\nStep {k+1}/{actual_steps} completed!", flush=True)
         print(f"  Mean loss: {overall_mean_loss:.4f}", flush=True)
         print(f"  Mean reward: {mean_reward:.4f}", flush=True)
         
         # Save checkpoint
         if (k + 1) % checkpoint_interval == 0:
             checkpoint_dir = checkpoint_path / f"step_{k+1}"
-            print(f"\n💾 Saving checkpoint to {checkpoint_dir}...", flush=True)
+            print(f"\nSaving checkpoint to {checkpoint_dir}...", flush=True)
             model.save_pretrained(checkpoint_dir)
             tokenizer.save_pretrained(checkpoint_dir)
-            print(f"✓ Checkpoint saved!", flush=True)
+            print(f"Checkpoint saved!", flush=True)
     
     # Save final model
     final_dir = checkpoint_path / "final"
-    print(f"\n💾 Saving final model to {final_dir}...", flush=True)
+    print(f"\nSaving final model to {final_dir}...", flush=True)
     if use_lora:
         # Save LoRA adapters
         model.save_pretrained(final_dir)
@@ -445,13 +445,13 @@ def main():
         model = model.merge_and_unload()
         merged_dir = checkpoint_path / "final_merged"
         model.save_pretrained(merged_dir)
-        print(f"✓ Merged model saved to {merged_dir}", flush=True)
+        print(f"Merged model saved to {merged_dir}", flush=True)
     else:
         model.save_pretrained(final_dir)
     tokenizer.save_pretrained(final_dir)
     
     print(f"\n{'='*60}", flush=True)
-    print(f"🎉 Training completed!", flush=True)
+    print(f"Training completed!", flush=True)
     print(f"{'='*60}", flush=True)
 
 if __name__ == "__main__":

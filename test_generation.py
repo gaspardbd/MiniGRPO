@@ -19,7 +19,7 @@ test_answer = "5"
 
 MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 
-print("🔍 Testing model generation...\n")
+print("Testing model generation...\n")
 print(f"Model: {MODEL_NAME}")
 print(f"Question: {test_question}")
 print(f"Expected answer: {test_answer}\n")
@@ -74,7 +74,7 @@ model_inputs = tokenizer(
 ).to(model.device)
 
 # Generate
-print("\n🚀 Generating 3 completions...\n")
+print("\nGenerating 3 completions...\n")
 generation_config = GenerationConfig(
     do_sample=True,
     top_p=1.0,
@@ -107,12 +107,12 @@ for i in range(3):
     
     if answer_match:
         pred_answer = answer_match.group(1).strip()
-        print(f"\n✅ Found <answer> tag!")
+        print(f"\nFound <answer> tag!")
         print(f"   Predicted: '{pred_answer}'")
         print(f"   Expected: '{test_answer}'")
         print(f"   Match: {pred_answer == test_answer}")
     else:
-        print(f"\n❌ NO <answer> tag found in output!")
+        print(f"\nNO <answer> tag found in output!")
         print(f"   The model is not following the expected format.")
 
 print("\n" + "="*70)
@@ -120,16 +120,16 @@ print("DIAGNOSIS:")
 print("="*70)
 print("""
 If you see NO <answer> tags:
-  → The model doesn't understand the prompt format
-  → Try a different model (e.g., Qwen2.5-1.5B-Instruct, SmolLM2-1.7B-Instruct)
-  → Or adapt the prompt format to what this model expects
+  - The model doesn't understand the prompt format
+  - Try a different model (e.g., Qwen2.5-1.5B-Instruct, SmolLM2-1.7B-Instruct)
+  - Or adapt the prompt format to what this model expects
 
 If you see <answer> tags but wrong answers:
-  → The model is too small/weak for math reasoning
-  → Need more training or a bigger/better model
+  - The model is too small/weak for math reasoning
+  - Need more training or a bigger/better model
 
 If you see <answer> tags with correct answers:
-  → Good! The training should work
-  → Low initial rewards are normal, they'll improve
+  - Good! The training should work
+  - Low initial rewards are normal, they'll improve
 """)
 

@@ -228,7 +228,7 @@ def main():
                 
                 # DEBUG: Show first completion to understand what model generates
                 if k == 0 and i == 0:
-                    print(f"\n  🔍 DEBUG - First completion sample:", flush=True)
+                    print(f"\n  DEBUG - First completion sample:", flush=True)
                     print(f"  Question: {q[:100]}...", flush=True)
                     print(f"  Expected answer: {a}", flush=True)
                     print(f"  Generated completion: {completions[0][:300]}...", flush=True)
@@ -281,13 +281,13 @@ def main():
                 replay_buffer.append(experience.to(cpu_device))
             torch.cuda.empty_cache()
             mean_reward = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
-            print(f"\n📊 Rollout Summary:", flush=True)
+            print(f"\nRollout Summary:", flush=True)
             print(f"  Buffer size: {len(replay_buffer)}", flush=True)
             print(f"  Mean reward: {mean_reward:.4f}", flush=True)
             print(f"  Min/Max reward: {min(all_rewards):.2f}/{max(all_rewards):.2f}", flush=True)
 
             with torch.enable_grad():
-                print(f"\n🔄 Training phase starting...", flush=True)
+                print(f"\nTraining phase starting...", flush=True)
                 experience_sampler = DataLoader(
                     replay_buffer,
                     batch_size=batch_size,
@@ -324,10 +324,10 @@ def main():
                         # torch.cuda.empty_cache()
                     epoch_mean_loss = sum(batch_losses) / len(batch_losses) if batch_losses else 0.0
                     epoch_losses.append(epoch_mean_loss)
-                    print(f"  ✓ Epoch {epoch+1} completed. Mean loss: {epoch_mean_loss:.4f}", flush=True)
+                    print(f"  Epoch {epoch+1} completed. Mean loss: {epoch_mean_loss:.4f}", flush=True)
                 
                 overall_mean_loss = sum(epoch_losses) / len(epoch_losses) if epoch_losses else 0.0
-                print(f"\n✅ Step {k+1}/{total_steps} completed!", flush=True)
+                print(f"\nStep {k+1}/{total_steps} completed!", flush=True)
                 print(f"  Overall mean loss: {overall_mean_loss:.4f}", flush=True)
                 print(f"  Mean reward: {mean_reward:.4f}", flush=True)
             if (
@@ -336,19 +336,19 @@ def main():
                 and (k + 1) % checkpoint_interval == 0
             ):
                 checkpoint_dir = checkpoint_path / f"step_{k+1}"
-                print(f"\n💾 Saving checkpoint to {checkpoint_dir}...", flush=True)
+                print(f"\nSaving checkpoint to {checkpoint_dir}...", flush=True)
                 model.save_pretrained(checkpoint_dir)
-                print(f"✓ Checkpoint saved!", flush=True)
+                print(f"Checkpoint saved!", flush=True)
         
     # Save final checkpoint
     if checkpoint_path is not None:
         final_checkpoint_dir = checkpoint_path / "final"
-        print(f"\n💾 Saving final checkpoint to {final_checkpoint_dir}...", flush=True)
+        print(f"\nSaving final checkpoint to {final_checkpoint_dir}...", flush=True)
         model.save_pretrained(final_checkpoint_dir)
-        print(f"✓ Final checkpoint saved!", flush=True)
+        print(f"Final checkpoint saved!", flush=True)
     
     print(f"\n{'='*60}", flush=True)
-    print(f"🎉 Training completed successfully!", flush=True)
+    print(f"Training completed successfully!", flush=True)
     print(f"{'='*60}", flush=True)
 
 

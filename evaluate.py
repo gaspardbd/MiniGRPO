@@ -1,8 +1,3 @@
-"""
-Evaluation script for GRPO trained models on GSM8K test set
-Based on your TP evaluation code
-"""
-
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM

@@ -1,41 +1,46 @@
-# Guide d'Entraînement Rapide avec LoRA
+# Fast Training Guide with LoRA
 
-## Problème résolu
+## Problem Solved
 
+Original `train.py` was too slow: 4 minutes for 3 samples due to:
+- Training the full model (500M parameters)
+- Separate reference model on CPU
+- No optimization
 
-(`train_fast.py`): **10x plus rapide**
-- LoRA : seulement ~1% des paramètres entraînés
-- Quantization 4-bit optionnelle
-- Pas de reference model séparé (utilise les log probs actuels)
-- Optimisé comme votre TP avec GRPOTrainer
+`train_fast.py` is 10x faster through:
+- LoRA: trains only ~1% of parameters
+- No separate reference model
+- Optimized batch sizes and rollouts
+- Optional 4-bit quantization
 
-## 📊 Comparaison avec votre TP
+## Comparison with TRL GRPOTrainer
 
-| Aspect | Votre TP (GRPOTrainer) | train_fast.py |
-|--------|----------------------|---------------|
-| LoRA | ✅ Oui | ✅ Oui |
-| Quantization | ✅ 4-bit | ✅ 4-bit (optionnel) |
-| Reference model | Implicite | Pas de modèle séparé |
-| Implémentation | HuggingFace TRL | Custom (votre code) |
-| Rewards | 2 fonctions séparées | 1 fonction combinée |
-| Contrôle | Limité | Total |
+| Aspect | TRL GRPOTrainer | train_fast.py |
+|--------|----------------|---------------|
+| LoRA | Yes | Yes |
+| Quantization | 4-bit | Optional 4-bit |
+| Reference model | Implicit | Uses current log probs |
+| Implementation | HuggingFace TRL | Custom |
+| Rewards | 2 separate functions | 1 combined function |
+| Control | Limited | Full control |
 
-## Utilisation rapide
+## Usage
 
-### 1. Dans Colab
+### Colab
 
 ```python
-%cd /content/MiniGRPO
-!git pull origin main
+%cd /content
+!git clone https://github.com/gaspardbd/MiniGRPO.git
+%cd MiniGRPO
+!pip install -q peft bitsandbytes
 
-# Installer PEFT si nécessaire
-!pip install peft bitsandbytes
+from huggingface_hub import login
+login("hf_xxxxx")
 
-# Lancer l'entraînement rapide
-!python train_fast.py
+%run train_fast.py
 ```
 
-### 2. Localement
+### Local
 
 ```bash
 cd MiniGRPO
@@ -43,24 +48,26 @@ pip install peft bitsandbytes
 python train_fast.py
 ```
 
-## ⚙️ Configuration par défaut
+## Configuration
+
+Default settings in `train_fast.py`:
 
 ```python
-# Modèle
+# Model
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"
 use_lora = True
-use_quant = False  # Mettez True si problème de mémoire
+use_quant = False  # Set True if memory issues
 
 # Dataset
-num_prompts = 500  # Au lieu de 100k
-batch_size = 8     # Augmenté de 4 à 8
-num_rollout = 2    # Réduit de 4 à 2
+num_prompts = 500  # Limited from 100k
+batch_size = 8     # Increased from 4
+num_rollout = 2    # Reduced from 4
 
 # Training
 max_steps = 100
 learning_rate = 1e-5
-clip_epsilon = 0.28  # Comme votre TP
-kl_weight = 0.0      # Beta = 0 comme votre TP
+clip_epsilon = 0.28
+kl_weight = 0.0  # Beta = 0
 
 # LoRA
 lora_r = 64
@@ -68,46 +75,44 @@ lora_alpha = 128
 lora_dropout = 0.1
 ```
 
-## 📈 Vitesse attendue
+## Expected Performance
 
-| Configuration | Temps par step | 100 steps |
-|--------------|----------------|-----------|
-| train.py (original) | ~9 min | ~15h |
+| Configuration | Time per step | 100 steps |
+|--------------|---------------|-----------|
+| train.py | ~9 min | ~15h |
 | train_fast.py (LoRA) | ~1 min | ~1h40 |
 | train_fast.py (LoRA + quant) | ~45 sec | ~1h15 |
 
-## 💾 Checkpoints et évaluation
+## Checkpoints and Evaluation
 
-### Sauvegardes
+### Saved Checkpoints
 
-Le script sauvegarde :
-- `output_fast/step_25/` - Checkpoint à 25 steps
-- `output_fast/step_50/` - Checkpoint à 50 steps
-- `output_fast/step_75/` - Checkpoint à 75 steps
-- `output_fast/final/` - LoRA adapters finaux
-- `output_fast/final_merged/` - Modèle mergé (LoRA + base)
+- `output_fast/step_25/` - Checkpoint at 25 steps
+- `output_fast/step_50/` - Checkpoint at 50 steps
+- `output_fast/final/` - Final LoRA adapters
+- `output_fast/final_merged/` - Merged model (LoRA + base)
 
-### Évaluation
+### Evaluation
 
 ```bash
-# Évaluer sur tout le test set GSM8K
+# Full test set
 python evaluate.py --model_path output_fast/final_merged
 
-# Évaluer sur 100 samples seulement
+# Quick test (100 samples)
 python evaluate.py --model_path output_fast/final_merged --num_samples 100
 
-# Évaluer un checkpoint intermédiaire
+# Intermediate checkpoint
 python evaluate.py --model_path output_fast/step_50
 ```
 
-Le script d'évaluation :
-- ✅ Détecte automatiquement si c'est un checkpoint LoRA
-- ✅ Merge les adapters automatiquement
-- ✅ Utilise le même format de prompt que l'entraînement
-- ✅ Calcule l'accuracy sur GSM8K
-- ✅ Sauvegarde les résultats en JSON
+The evaluation script:
+- Auto-detects LoRA checkpoints
+- Merges adapters automatically
+- Uses same prompt format as training
+- Calculates accuracy on GSM8K
+- Saves results to JSON
 
-### Exemple de sortie d'évaluation
+### Example Output
 
 ```
 ============================================================
@@ -117,110 +122,102 @@ Accuracy: 34.52%
 Correct: 453/1319
 ============================================================
 
-📝 Sample predictions:
+Sample predictions:
 
 Example 1:
   Question: Janet's ducks lay 16 eggs per day...
   True answer: 18
   Generated: 18
-  Correct: ✓
+  Correct: Yes
 ```
 
-## 🔧 Personnalisation
+## Customization
 
-### Pour un training plus long
-
-Modifiez dans `train_fast.py` :
+### Longer training
 
 ```python
-num_prompts = 2000   # Plus de données
-max_steps = 500      # Plus de steps
+num_prompts = 2000
+max_steps = 500
 ```
 
-### Pour plus de vitesse
+### More speed
 
 ```python
-use_quant = True     # Active la quantization 4-bit
-num_rollout = 1      # Réduit à 1 rollout
-batch_size = 16      # Augmente le batch
-max_length = 200     # Réduit la longueur max
+use_quant = True
+num_rollout = 1
+batch_size = 16
+max_length = 200
 ```
 
-### Pour éviter OOM (Out of Memory)
+### Less memory (if OOM)
 
 ```python
-use_quant = True           # Active la quantization
-batch_size = 4             # Réduit le batch
-num_rollout = 1            # Réduit les rollouts
-max_length = 150           # Réduit la longueur
-gradient_accumulation = 2  # Ajouter accumulation
+use_quant = True
+batch_size = 4
+num_rollout = 1
+max_length = 150
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Erreur: "CUDA out of memory"
+### CUDA out of memory
 
 ```python
-# Dans train_fast.py, modifiez:
 use_quant = True
 batch_size = 2
 num_rollout = 1
 ```
 
-### Erreur: "peft not found"
+### Missing dependencies
 
 ```bash
 pip install peft bitsandbytes
 ```
 
-### Rewards toujours à 0
+### Rewards always 0
 
-Le modèle ne génère pas le bon format. Lancez :
+Model doesn't generate correct format. Run:
 ```bash
 python test_generation.py
 ```
 
-### Loss explose (>100)
+### Loss explodes (>100)
 
 ```python
-# Réduisez le learning rate
-learning_rate = 5e-6  # Au lieu de 1e-5
+learning_rate = 5e-6  # Reduce from 1e-5
 ```
 
-## 📊 Différences avec train.py original
+## Differences from train.py
 
 | Feature | train.py | train_fast.py |
 |---------|----------|---------------|
-| LoRA | ❌ Non | ✅ Oui |
-| Reference model | ✅ Modèle séparé sur CPU | ❌ Utilise log probs actuels |
-| Vitesse | ❌ 9 min/step | ✅ 1 min/step |
-| Mémoire | ❌ Haute | ✅ Basse |
+| LoRA | No | Yes |
+| Reference model | Separate on CPU | Uses current log probs |
+| Speed | 9 min/step | 1 min/step |
+| Memory | High | Low |
 | Dataset | 100k prompts | 500 prompts (configurable) |
 | Batch size | 4 | 8 |
 | Rollouts | 4 | 2 |
 
-## 🎯 Workflow complet
+## Complete Workflow
 
 ```bash
-# 1. Test rapide du modèle
+# 1. Test model
 python test_generation.py
 
-# 2. Entraînement rapide
+# 2. Train
 python train_fast.py
 
-# 3. Évaluation
+# 3. Quick evaluation
 python evaluate.py --model_path output_fast/final_merged --num_samples 100
 
-# 4. Si bon, évaluation complète
+# 4. Full evaluation (if satisfied)
 python evaluate.py --model_path output_fast/final_merged
 ```
 
-## 📝 Notes
+## Notes
 
-- **LoRA** : Entraîne seulement des matrices de rang faible (~1% des paramètres)
-- **No ref model** : On utilise les log probs de la politique actuelle comme référence au lieu d'un modèle séparé (simplifie et accélère)
-- **Quantization** : Optionnelle, réduit la mémoire de 4x
-- **num_prompts** : Limité à 500 par défaut pour la vitesse, augmentez selon vos besoins
-
-Bon entraînement rapide ! 🚀
-
+- **LoRA**: Trains only low-rank matrices (~1% of parameters)
+- **No ref model**: Uses current policy log probs as reference instead of separate model
+- **Quantization**: Optional 4-bit quantization reduces memory by 4x
+- **num_prompts**: Default 500 for speed, increase as needed
