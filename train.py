@@ -141,8 +141,8 @@ The assistant first thinks about the reasoning process in the mind and then prov
 
 def main():
     # parameters
-    model_name = "LiquidAI/LFM2-350M"
-    ref_model_name = "LiquidAI/LFM2-350M"
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+    ref_model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     device_map = "auto"
     seed = 42
     batch_size = 4
@@ -155,6 +155,7 @@ def main():
     temperature=0.3
     top_p=1.0
     prompts_path="math_tasks.jsonl"
+    max_steps = 100  # Limit to 100 steps for initial testing (remove or increase later)
 
 
     device = torch.device("cuda:0")
@@ -176,17 +177,32 @@ def main():
     prompts = read_prompts(prompts_path)
     dataloader = DataLoader(prompts, batch_size=batch_size, shuffle=True)
     total_steps = len(dataloader)
-    print(f"Loaded {len(prompts)} prompts. Batch size={batch_size}, num_rollout={num_rollout}", flush=True)
-    print(f"Total steps to run: {total_steps}", flush=True)
+    actual_steps = min(total_steps, max_steps)
+    print(f"\n{'='*60}", flush=True)
+    print(f"TRAINING CONFIGURATION", flush=True)
+    print(f"{'='*60}", flush=True)
+    print(f"Model: {model_name}", flush=True)
+    print(f"Loaded {len(prompts)} prompts", flush=True)
+    print(f"Batch size: {batch_size}", flush=True)
+    print(f"Rollouts per sample: {num_rollout}", flush=True)
+    print(f"Total possible steps: {total_steps}", flush=True)
+    print(f"Steps to run (max_steps): {actual_steps}", flush=True)
+    print(f"Checkpoint interval: every {checkpoint_interval} steps", flush=True)
+    print(f"{'='*60}\n", flush=True)
 
     loss_fn = GRPO_Loss(clip_epsilon=0.2, kl_weight=0.01)
     replay_buffer = ReplayBuffer()
 
     for k, prompt_batch in enumerate(dataloader):
+        # Stop after max_steps for testing
+        if k >= max_steps:
+            print(f"\n🛑 Reached max_steps={max_steps}. Stopping training.", flush=True)
+            break
+            
         replay_buffer.clear()
         progress_pct = ((k + 1) / total_steps) * 100
         print(f"\n{'='*60}", flush=True)
-        print(f"Step {k+1}/{total_steps} ({progress_pct:.1f}%): starting rollouts", flush=True)
+        print(f"Step {k+1}/{min(total_steps, max_steps)} ({progress_pct:.1f}%): starting rollouts", flush=True)
         print(f"{'='*60}", flush=True)
         
         question_batch = prompt_batch["question"]

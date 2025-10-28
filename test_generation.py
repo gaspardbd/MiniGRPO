@@ -17,8 +17,10 @@ The assistant first thinks about the reasoning process in the mind and then prov
 test_question = "What is 2 + 3?"
 test_answer = "5"
 
+MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+
 print("🔍 Testing model generation...\n")
-print(f"Model: LiquidAI/LFM2-350M")
+print(f"Model: {MODEL_NAME}")
 print(f"Question: {test_question}")
 print(f"Expected answer: {test_answer}\n")
 
@@ -34,12 +36,12 @@ else:
     dtype = torch.float32
 
 model = AutoModelForCausalLM.from_pretrained(
-    "LiquidAI/LFM2-350M",
+    MODEL_NAME,
     torch_dtype=dtype,
     device_map="auto",
     low_cpu_mem_usage=True,
 )
-tokenizer = AutoTokenizer.from_pretrained("LiquidAI/LFM2-350M")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 

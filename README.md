@@ -4,6 +4,16 @@ Re-implementation of GRPO (Group Relative Policy Optimization) from DeepSeekMath
 
 ## 🚀 Quick Start
 
+### Step 0: Test Model First (Recommended)
+
+Before starting full training, test that the model generates the correct format:
+
+```bash
+python test_generation.py
+```
+
+This will show you 3 sample completions and verify the model uses `<answer>` tags.
+
 ### Option 1: Google Colab (Recommended)
 
 Open `colab_train.ipynb` in Google Colab and follow the instructions. The notebook includes:
@@ -69,12 +79,23 @@ Step 1/25000 (0.0%): starting rollouts
 Key parameters in `train.py`:
 
 ```python
-model_name = "LiquidAI/LFM2-350M"
+model_name = "Qwen/Qwen2.5-0.5B-Instruct"  # Default model
 batch_size = 4
 num_rollout = 4
 temperature = 0.3
 checkpoint_interval = 20
+max_steps = 100  # Set to None or a large number for full training
 ```
+
+### Recommended Models
+
+Models that work well with this codebase (tested to follow `<answer>` format):
+- ✅ `Qwen/Qwen2.5-0.5B-Instruct` - Fast, good for testing
+- ✅ `Qwen/Qwen2.5-1.5B-Instruct` - Better reasoning
+- ✅ `HuggingFaceTB/SmolLM2-1.7B-Instruct` - Alternative option
+
+Models that may NOT work (don't follow the format):
+- ❌ `LiquidAI/LFM2-350M` - Doesn't generate `<answer>` tags
 
 ## 📚 Sources
 
