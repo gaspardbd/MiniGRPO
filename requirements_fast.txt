@@ -1,0 +1,20 @@
+# Requirements for fast GRPO training with LoRA
+# Install with: pip install -r requirements_fast.txt
+
+# Core dependencies
+torch>=2.0.0
+transformers>=4.36.0
+accelerate>=0.25.0
+datasets>=2.14.0
+
+# LoRA and quantization
+peft>=0.7.0
+bitsandbytes>=0.41.0
+
+# Utilities
+tqdm>=4.65.0
+wandb>=0.15.0  # Optional, for logging
+
+# Evaluation
+numpy>=1.24.0
+
