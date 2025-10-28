@@ -209,6 +209,14 @@ def main():
                 )
                 all_rewards.extend(rewards.tolist())
                 print(f"  Sample {i+1}: generation done. Rewards: {rewards.tolist()}", flush=True)
+                
+                # DEBUG: Show first completion to understand what model generates
+                if k == 0 and i == 0:
+                    print(f"\n  🔍 DEBUG - First completion sample:", flush=True)
+                    print(f"  Question: {q[:100]}...", flush=True)
+                    print(f"  Expected answer: {a}", flush=True)
+                    print(f"  Generated completion: {completions[0][:300]}...", flush=True)
+                    print(f"  ---", flush=True)
 
                 attention_mask = seq_ids != pad_token_id
                 position_ids = attention_mask.long().cumsum(dim=-1) - 1
